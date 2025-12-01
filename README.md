@@ -47,7 +47,13 @@ Jalankan dengan:
 python geothermal_sim.py --dt-days 5 --schedule jadwal.csv --duration-days 0 --production-kgps 0 --injection-kgps 0
 ```
 
-Argumen `duration-days` dan laju konstan akan diabaikan ketika `--schedule` digunakan; semua langkah mengikuti isi jadwal.
+Argumen `duration-days` dan laju konstan bersifat opsional ketika `--schedule` digunakan; semua langkah mengikuti isi jadwal.
+
+### Validasi dan kestabilan
+- `dt_days` dan `duration_days` harus positif. Langkah waktu di bagian akhir otomatis dipotong jika tidak habis dibagi (`ceil`),
+  sehingga durasi yang diminta tetap tercapai tanpa melompati waktu.
+- Jadwal dengan durasi sangat pendek (lebih kecil dari `dt_days`) tetap dijalankan minimal satu langkah sehingga tidak hilang.
+- Jika Anda lupa mengisi argumen durasi atau laju saat tanpa jadwal, CLI akan memberi pesan kesalahan yang jelas.
 
 ## Membaca hasil
 - **Tekanan** meningkat bila injeksi lebih besar dari produksi; sebaliknya menurun ketika produksi mendominasi.

@@ -34,6 +34,16 @@ class GeothermalReservoirTests(unittest.TestCase):
         self.reservoir.step(dt_days=0.5, production_rate_kg_s=40.0, injection_rate_kg_s=0.0, injection_temperature_c=50.0)
         self.assertGreater(self.reservoir.history[-1].cumulative_heat_extracted_j, heat_out)
 
+    def test_run_handles_fractional_last_step(self) -> None:
+        history = self.reservoir.run(
+            duration_days=1.2,
+            dt_days=1.0,
+            production_rate_kg_s=40.0,
+            injection_rate_kg_s=60.0,
+            injection_temperature_c=90.0,
+        )
+        self.assertAlmostEqual(history[-1].time_days, 1.2)
+
     def test_run_schedule(self) -> None:
         schedule = [
             {"duration_days": 1, "production_kgps": 50.0, "injection_kgps": 50.0, "injection_temperature_c": 80.0},
@@ -44,6 +54,13 @@ class GeothermalReservoirTests(unittest.TestCase):
         last_state = history[-1]
         self.assertLess(last_state.temperature_c, self.reservoir.initial_temperature_c)
         self.assertGreater(last_state.pressure_pa, self.reservoir.initial_pressure_pa)
+
+    def test_run_schedule_executes_short_duration(self) -> None:
+        schedule = [
+            {"duration_days": 0.1, "production_kgps": 10.0, "injection_kgps": 10.0, "injection_temperature_c": 50.0}
+        ]
+        history = self.reservoir.run_schedule(schedule=schedule, dt_days=1.0)
+        self.assertGreaterEqual(history[-1].time_days, 0.1)
 
 
 if __name__ == "__main__":

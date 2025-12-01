@@ -86,10 +86,26 @@ class GeothermalReservoir:
         self.history.append(new_state)
         return new_state
 
-    def run(self, duration_days: float, dt_days: float, production_rate_kg_s: float, injection_rate_kg_s: float, injection_temperature_c: float) -> List[SimulationState]:
-        steps = int(duration_days / dt_days)
-        for _ in range(steps):
-            self.step(dt_days, production_rate_kg_s, injection_rate_kg_s, injection_temperature_c)
+    def run(
+        self,
+        duration_days: float,
+        dt_days: float,
+        production_rate_kg_s: float,
+        injection_rate_kg_s: float,
+        injection_temperature_c: float,
+    ) -> List[SimulationState]:
+        if duration_days <= 0:
+            raise ValueError("duration_days must be positive")
+        if dt_days <= 0:
+            raise ValueError("dt_days must be positive")
+
+        steps = int(-(-duration_days // dt_days))  # ceil division to cover the full duration
+        total_elapsed = 0.0
+        for i in range(steps):
+            remaining = duration_days - total_elapsed
+            step_dt = min(dt_days, remaining)
+            self.step(step_dt, production_rate_kg_s, injection_rate_kg_s, injection_temperature_c)
+            total_elapsed += step_dt
         return self.history
 
     def run_schedule(self, schedule: List[dict], dt_days: float) -> List[SimulationState]:
@@ -106,14 +122,21 @@ class GeothermalReservoir:
             duration = float(item["duration_days"])
             if duration <= 0:
                 raise ValueError("Each schedule duration must be positive")
-            steps = int(round(duration / dt_days))
-            for _ in range(steps):
+            if dt_days <= 0:
+                raise ValueError("dt_days must be positive")
+
+            steps = max(1, int(-(-duration // dt_days)))
+            elapsed = 0.0
+            for step_index in range(steps):
+                remaining = duration - elapsed
+                step_dt = min(dt_days, remaining)
                 self.step(
-                    dt_days,
+                    step_dt,
                     production_rate_kg_s=float(item["production_kgps"]),
                     injection_rate_kg_s=float(item["injection_kgps"]),
                     injection_temperature_c=float(item["injection_temperature_c"]),
                 )
+                elapsed += step_dt
         return self.history
 
 
@@ -123,10 +146,10 @@ def run_cli() -> None:
     import json
 
     parser = argparse.ArgumentParser(description="Run a simple geothermal reservoir material and energy balance simulation.")
-    parser.add_argument("--duration-days", type=float, required=True, help="Total simulation duration in days.")
+    parser.add_argument("--duration-days", type=float, default=None, help="Total simulation duration in days.")
     parser.add_argument("--dt-days", type=float, default=1.0, help="Time step in days.")
-    parser.add_argument("--production-kgps", type=float, required=True, help="Production rate in kg/s.")
-    parser.add_argument("--injection-kgps", type=float, required=True, help="Injection rate in kg/s.")
+    parser.add_argument("--production-kgps", type=float, default=None, help="Production rate in kg/s.")
+    parser.add_argument("--injection-kgps", type=float, default=None, help="Injection rate in kg/s.")
     parser.add_argument("--injection-temperature", type=float, default=70.0, help="Injection fluid temperature in Celsius.")
     parser.add_argument(
         "--schedule",
@@ -159,6 +182,17 @@ def run_cli() -> None:
                 schedule = list(reader)
         history = reservoir.run_schedule(schedule=schedule, dt_days=args.dt_days)
     else:
+        missing_args = [
+            name
+            for name, value in (
+                ("--duration-days", args.duration_days),
+                ("--production-kgps", args.production_kgps),
+                ("--injection-kgps", args.injection_kgps),
+            )
+            if value is None
+        ]
+        if missing_args:
+            raise SystemExit(f"Missing required arguments for constant run: {', '.join(missing_args)}")
         history = reservoir.run(
             duration_days=args.duration_days,
             dt_days=args.dt_days,
