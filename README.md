@@ -26,7 +26,28 @@ Hasil dapat langsung tampil di terminal atau disimpan sebagai CSV:
 python geothermal_sim.py --duration-days 90 --dt-days 1 --production-kgps 60 --injection-kgps 60 --output hasil.csv
 ```
 
-Kolom CSV: `time_days`, `pressure_pa`, `temperature_c`, `fluid_mass_kg`.
+Kolom CSV: `time_days`, `pressure_pa`, `temperature_c`, `fluid_mass_kg`, `cumulative_heat_extracted_j` (panas kumulatif yang sudah diproduksi dalam Joule).
+
+### Menjalankan jadwal bertingkat (schedule)
+Untuk kasus di mana laju produksi/injeksi berubah per periode, siapkan berkas schedule dalam CSV atau JSON dengan kolom:
+`duration_days`, `production_kgps`, `injection_kgps`, `injection_temperature_c`.
+
+Contoh CSV:
+
+```csv
+duration_days,production_kgps,injection_kgps,injection_temperature_c
+30,80,60,90
+60,65,65,90
+45,50,70,80
+```
+
+Jalankan dengan:
+
+```bash
+python geothermal_sim.py --dt-days 5 --schedule jadwal.csv --duration-days 0 --production-kgps 0 --injection-kgps 0
+```
+
+Argumen `duration-days` dan laju konstan akan diabaikan ketika `--schedule` digunakan; semua langkah mengikuti isi jadwal.
 
 ## Membaca hasil
 - **Tekanan** meningkat bila injeksi lebih besar dari produksi; sebaliknya menurun ketika produksi mendominasi.

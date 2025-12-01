@@ -27,6 +27,24 @@ class GeothermalReservoirTests(unittest.TestCase):
         new_temperature = self.reservoir.history[-1].temperature_c
         self.assertLess(new_temperature, self.reservoir.initial_temperature_c)
 
+    def test_cumulative_heat_tracking(self) -> None:
+        self.reservoir.step(dt_days=0.5, production_rate_kg_s=40.0, injection_rate_kg_s=0.0, injection_temperature_c=50.0)
+        heat_out = self.reservoir.history[-1].cumulative_heat_extracted_j
+        self.assertGreater(heat_out, 0.0)
+        self.reservoir.step(dt_days=0.5, production_rate_kg_s=40.0, injection_rate_kg_s=0.0, injection_temperature_c=50.0)
+        self.assertGreater(self.reservoir.history[-1].cumulative_heat_extracted_j, heat_out)
+
+    def test_run_schedule(self) -> None:
+        schedule = [
+            {"duration_days": 1, "production_kgps": 50.0, "injection_kgps": 50.0, "injection_temperature_c": 80.0},
+            {"duration_days": 1, "production_kgps": 30.0, "injection_kgps": 60.0, "injection_temperature_c": 90.0},
+        ]
+        history = self.reservoir.run_schedule(schedule=schedule, dt_days=0.5)
+        self.assertEqual(len(history), 1 + int(2 / 0.5))
+        last_state = history[-1]
+        self.assertLess(last_state.temperature_c, self.reservoir.initial_temperature_c)
+        self.assertGreater(last_state.pressure_pa, self.reservoir.initial_pressure_pa)
+
 
 if __name__ == "__main__":
     unittest.main()
